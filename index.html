@@ -136,13 +136,14 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
 <main class="wrap">
   <header>
     <h1>三味線チューナー</h1>
-    <p class="lede">マイクに向かって糸を弾くと、狙いの音との差をセントで表示します。本調子・三下り・三上りに対応しています。</p>
+    <p class="lede">マイクに向かって糸を弾くと、狙いの音との差をセントで表示します。本調子・二上り・三下り・三上りに対応しています。</p>
   </header>
 
   <section aria-labelledby="tuning-label">
     <span class="label head" id="tuning-label">調弦</span>
     <div class="seg full" id="tuning-seg" role="group" aria-labelledby="tuning-label">
       <button type="button" id="tuning-honchoshi" data-tuning="honchoshi" aria-pressed="false">本調子</button>
+      <button type="button" id="tuning-nijoagari" data-tuning="nijoagari" aria-pressed="false">二上り</button>
       <button type="button" id="tuning-sansage" data-tuning="sansage" aria-pressed="true">三下り</button>
       <button type="button" id="tuning-sanage" data-tuning="sanage" aria-pressed="false">三上り</button>
     </div>
@@ -232,7 +233,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
     </div>
   </section>
 
-  <p class="foot">マイクの判定はオクターブを区別せず、音名の近さで狙いの糸を選びます。本調子は一の糸と三の糸が同じ音名です。</p>
+  <p class="foot">マイクの判定はオクターブを区別せず、音名の近さで狙いの糸を選びます。本調子と二上りは、一の糸と三の糸が同じ音名です。</p>
 </main>
 
 <script>
@@ -243,6 +244,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
   var NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   var TUNINGS = {
     honchoshi: { label: '本調子', offs: [0, 5, 12], gaps: ['完全4度', '完全5度'] },
+    nijoagari: { label: '二上り', offs: [0, 7, 12], gaps: ['完全5度', '完全4度'] },
     sansage:   { label: '三下り', offs: [0, 5, 10], gaps: ['完全4度', '完全4度'] },
     sanage:    { label: '三上り', offs: [0, 5, 14], gaps: ['完全4度', '長6度'] }
   };
