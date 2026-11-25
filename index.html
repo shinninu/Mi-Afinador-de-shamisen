@@ -89,6 +89,8 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
 .cents{text-align:right}
 .cents b{display:block;font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cents small{display:block;color:var(--ink-2);font-size:.8rem;font-variant-numeric:tabular-nums}
+.cents small.measured{margin-top:4px;color:var(--ink);font-size:1.4rem;font-weight:700;line-height:1.3;white-space:nowrap}
+.cents small.hz{font-size:1rem}
 .gauge{position:relative;height:96px;margin:10px 18px 0}
 .gauge .track{position:absolute;left:0;right:0;top:33px;height:6px;border-radius:99px;background:var(--line)}
 .gauge .okzone{position:absolute;left:45%;width:10%;top:20px;height:32px;border-radius:6px;background:var(--ok-soft)}
@@ -166,7 +168,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
     <div class="meter" id="meter">
       <div class="readout">
         <div class="target"><b id="t-note">–</b><small id="t-str">狙いの糸</small></div>
-        <div class="cents"><b id="c-val">–</b><small id="c-note">–</small><small id="c-hz">–</small></div>
+        <div class="cents"><b id="c-val">–</b><small class="measured" id="c-note">–</small><small class="hz" id="c-hz">–</small></div>
       </div>
       <div class="gauge" aria-hidden="true">
         <div class="track"></div>
