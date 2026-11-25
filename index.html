@@ -166,7 +166,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
     <div class="meter" id="meter">
       <div class="readout">
         <div class="target"><b id="t-note">–</b><small id="t-str">狙いの糸</small></div>
-        <div class="cents"><b id="c-val">–</b><small id="c-hz">–</small></div>
+        <div class="cents"><b id="c-val">–</b><small id="c-note">–</small><small id="c-hz">–</small></div>
       </div>
       <div class="gauge" aria-hidden="true">
         <div class="track"></div>
@@ -511,6 +511,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
     $('t-note').textContent = '–';
     $('t-str').textContent = '狙いの糸';
     $('c-val').textContent = '–';
+    $('c-note').textContent = '–';
     $('c-hz').textContent = '–';
     $('needle').style.left = '50%';
     $('hint').textContent = msg || (mic.on ? '糸を弾いてください' : 'マイクがオフです');
@@ -537,6 +538,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.
     $('t-str').textContent = names.join('・');
     var r = Math.round(cents);
     $('c-val').textContent = (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r) + ' cent';
+    $('c-note').textContent = '実測 ' + noteLabel(Math.round(m));
     $('c-hz').textContent = (S.a4 * Math.pow(2, (m - 69) / 12)).toFixed(1) + ' Hz';
     var pos = Math.max(-50, Math.min(50, cents));
     $('needle').style.left = (50 + pos) + '%';
