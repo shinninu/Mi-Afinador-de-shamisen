@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>三味線チューナー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column. Tuning and key on top, then the meter (mic) or the three strings (reference tones). */
+:root{
+  --bg:#E8ECEF;
+  --surface:#F5F7F8;
+  --ink:#14202B;
+  --ink-2:#4A5966;
+  --line:#C5CDD4;
+  --accent:#27496D;
+  --accent-ink:#F5F7F8;
+  --active:#B8791A;
+  --active-soft:#F4E6C9;
+  --ok:#1C7A57;
+  --ok-soft:#CDE9DD;
+  --font-display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0E151C;
+    --surface:#16202A;
+    --ink:#E7EDF2;
+    --ink-2:#9FB0BE;
+    --line:#2B3947;
+    --accent:#8DB2DC;
+    --accent-ink:#0E151C;
+    --active:#E6B54F;
+    --active-soft:#3A2F17;
+    --ok:#5CCB9E;
+    --ok-soft:#173A2D;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.6;
+  padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(36px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:30rem;margin-inline:auto;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--font-display);font-weight:700;font-size:2rem;line-height:1.2;margin:0;letter-spacing:.04em}
+.lede{margin:8px 0 0;color:var(--ink-2);font-size:.9rem;text-wrap:balance}
+.label{font-size:.75rem;letter-spacing:.08em;color:var(--ink-2);font-weight:700}
+.label.head{margin-bottom:8px;display:block}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg.full{display:flex}
+.seg button{flex:1;background:transparent;border:0;padding:0 14px;min-height:46px;cursor:pointer;min-width:48px}
+.seg button+button,.seg output+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.seg output{display:flex;align-items:center;justify-content:center;min-width:5.5rem;padding:0 8px;border-left:1px solid var(--line);font-variant-numeric:tabular-nums}
+
+.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.key{min-height:46px;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;font-weight:700;padding:0}
+.key[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+.btn{min-height:52px;border-radius:10px;border:1px solid var(--accent);cursor:pointer;font-weight:700;padding:0 12px;width:100%}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.mic-top{display:flex;flex-direction:column;gap:8px}
+.status{margin:0;font-size:.85rem;color:var(--ink-2);min-height:1.4em}
+.status.err{color:var(--active)}
+.level{height:4px;border-radius:99px;background:var(--line);overflow:hidden}
+.level i{display:block;height:100%;width:0;background:var(--accent);transition:width .06s linear}
+
+.meter{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px}
+.readout{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.target b{display:block;font-family:var(--font-display);font-size:3.6rem;line-height:1;min-width:2.2ch;white-space:nowrap}
+.target small{display:block;color:var(--ink-2);font-size:.8rem;margin-top:4px}
+.cents{text-align:right}
+.cents b{display:block;font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cents small{display:block;color:var(--ink-2);font-size:.8rem;font-variant-numeric:tabular-nums}
+.gauge{position:relative;height:96px;margin:10px 18px 0}
+.gauge .track{position:absolute;left:0;right:0;top:33px;height:6px;border-radius:99px;background:var(--line)}
+.gauge .okzone{position:absolute;left:45%;width:10%;top:20px;height:32px;border-radius:6px;background:var(--ok-soft)}
+.gauge .tick{position:absolute;top:28px;height:16px;width:2px;margin-left:-1px;background:var(--ink-2);opacity:.45}
+.gauge .tl{position:absolute;top:70px;transform:translateX(-50%);font-size:.7rem;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gauge .needle{position:absolute;top:8px;height:56px;width:4px;margin-left:-2px;left:50%;border-radius:2px;background:var(--accent);opacity:.3;transition:left .09s linear,opacity .2s,background .15s}
+.meter.live .needle{opacity:1}
+.meter.ok .needle{background:var(--ok)}
+.meter.ok .target b,.meter.ok .cents b{color:var(--ok)}
+.hint{margin:6px 0 0;text-align:center;font-weight:700;min-height:1.6em}
+.meter.ok .hint{color:var(--ok)}
+
+.strings{display:flex;flex-direction:column}
+.string{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;
+  width:100%;text-align:left;min-height:84px;padding:14px 16px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+}
+.string[aria-pressed="true"]{background:var(--active-soft);border-color:var(--active)}
+.string.hit{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.string.hit.ok{border-color:var(--ok);box-shadow:0 0 0 2px var(--ok) inset}
+.s-name b{display:block;font-family:var(--font-display);font-size:1.35rem;line-height:1.25;white-space:nowrap}
+.s-name small,.s-note small{display:block;color:var(--ink-2);font-size:.75rem}
+.s-note{text-align:right}
+.s-note b{display:block;font-family:var(--font-display);font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.s-note small{font-variant-numeric:tabular-nums;min-height:1.1em}
+.s-line{position:relative;height:28px;min-width:0}
+.s-line i{position:absolute;left:0;right:0;top:50%;height:var(--w);margin-top:calc(var(--w) / -2);background:var(--ink-2);border-radius:99px}
+.string[aria-pressed="true"] .s-line i{background:var(--active)}
+.string.playing .s-line i{animation:shake .07s linear infinite alternate}
+@keyframes shake{from{transform:translateY(-1.5px)}to{transform:translateY(1.5px)}}
+@media (prefers-reduced-motion: reduce){
+  .string.playing .s-line i{animation:none}
+  .gauge .needle,.level i{transition:none}
+}
+.interval{text-align:center;font-size:.75rem;color:var(--ink-2);padding:6px 0;letter-spacing:.06em}
+.tip{margin:8px 2px 0;color:var(--ink-2);font-size:.8rem}
+
+.settings{display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--line);padding-top:18px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.foot{margin:0;color:var(--ink-2);font-size:.8rem}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>三味線チューナー</h1>
+    <p class="lede">マイクに向かって糸を弾くと、狙いの音との差をセントで表示します。本調子・三下り・三上りに対応しています。</p>
+  </header>
+
+  <section aria-labelledby="tuning-label">
+    <span class="label head" id="tuning-label">調弦</span>
+    <div class="seg full" id="tuning-seg" role="group" aria-labelledby="tuning-label">
+      <button type="button" id="tuning-honchoshi" data-tuning="honchoshi" aria-pressed="false">本調子</button>
+      <button type="button" id="tuning-sansage" data-tuning="sansage" aria-pressed="true">三下り</button>
+      <button type="button" id="tuning-sanage" data-tuning="sanage" aria-pressed="false">三上り</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="keys-label">
+    <span class="label head" id="keys-label">一の糸の音（調子）</span>
+    <div class="keys" id="keys" role="group" aria-labelledby="keys-label"></div>
+  </section>
+
+  <div class="seg full" id="tab-seg" role="group" aria-label="モード">
+    <button type="button" id="tab-mic" data-tab="mic" aria-pressed="true">マイクで測る</button>
+    <button type="button" id="tab-ref" data-tab="ref" aria-pressed="false">基準音を聴く</button>
+  </div>
+
+  <section id="panel-mic" class="mic-top" aria-label="マイクで測る">
+    <button type="button" class="btn primary" id="mic-btn">マイクをオンにする</button>
+    <p class="status" id="mic-status" role="status">マイクをオンにして、糸を1本ずつ弾いてください。</p>
+    <div class="level" aria-hidden="true"><i id="level"></i></div>
+    <div class="meter" id="meter">
+      <div class="readout">
+        <div class="target"><b id="t-note">–</b><small id="t-str">狙いの糸</small></div>
+        <div class="cents"><b id="c-val">–</b><small id="c-hz">–</small></div>
+      </div>
+      <div class="gauge" aria-hidden="true">
+        <div class="track"></div>
+        <div class="okzone"></div>
+        <span class="tick" style="left:0%"></span><span class="tick" style="left:25%"></span><span class="tick" style="left:50%"></span><span class="tick" style="left:75%"></span><span class="tick" style="left:100%"></span>
+        <span class="tl" style="left:0%">−50</span><span class="tl" style="left:25%">−25</span><span class="tl" style="left:50%">0</span><span class="tl" style="left:75%">+25</span><span class="tl" style="left:100%">+50</span>
+        <div class="needle" id="needle"></div>
+      </div>
+      <p class="hint" id="hint">マイクがオフです</p>
+    </div>
+  </section>
+
+  <section aria-label="三本の糸">
+    <div class="strings">
+      <button type="button" class="string" id="string-0" aria-pressed="false" style="--w:7px">
+        <span class="s-name"><b>一の糸</b><small>いちのいと</small></span>
+        <span class="s-line"><i></i></span>
+        <span class="s-note"><b></b><small></small></span>
+      </button>
+      <div class="interval" id="gap-0" aria-hidden="true"></div>
+      <button type="button" class="string" id="string-1" aria-pressed="false" style="--w:4.5px">
+        <span class="s-name"><b>二の糸</b><small>にのいと</small></span>
+        <span class="s-line"><i></i></span>
+        <span class="s-note"><b></b><small></small></span>
+      </button>
+      <div class="interval" id="gap-1" aria-hidden="true"></div>
+      <button type="button" class="string" id="string-2" aria-pressed="false" style="--w:2.5px">
+        <span class="s-name"><b>三の糸</b><small>さんのいと</small></span>
+        <span class="s-line"><i></i></span>
+        <span class="s-note"><b></b><small></small></span>
+      </button>
+    </div>
+    <p class="tip" id="tip-mic">糸の行をタップすると、その糸を狙いに固定できます。もう一度タップで自動に戻ります。</p>
+  </section>
+
+  <div class="actions" id="ref-actions" hidden>
+    <button type="button" class="btn primary" id="seq">順に鳴らす</button>
+    <button type="button" class="btn ghost" id="stop">止める</button>
+  </div>
+
+  <section class="settings" aria-label="設定">
+    <div class="row" id="row-mode" hidden>
+      <span class="label">音色</span>
+      <div class="seg" role="group" aria-label="音色">
+        <button type="button" id="mode-sustain" data-mode="sustain" aria-pressed="true">持続音</button>
+        <button type="button" id="mode-pluck" data-mode="pluck" aria-pressed="false">撥</button>
+      </div>
+    </div>
+    <div class="row" id="row-oct" hidden>
+      <span class="label">音域</span>
+      <div class="seg" role="group" aria-label="音域">
+        <button type="button" id="oct-low" data-oct="-1" aria-pressed="false">低</button>
+        <button type="button" id="oct-mid" data-oct="0" aria-pressed="true">標準</button>
+        <button type="button" id="oct-high" data-oct="1" aria-pressed="false">高</button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">基準 A4</span>
+      <div class="seg" role="group" aria-label="基準周波数">
+        <button type="button" id="a4-down" aria-label="基準を1Hz下げる">−</button>
+        <output id="a4-val" for="a4-down a4-up">440 Hz</output>
+        <button type="button" id="a4-up" aria-label="基準を1Hz上げる">＋</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">マイクの判定はオクターブを区別せず、音名の近さで狙いの糸を選びます。本調子は一の糸と三の糸が同じ音名です。</p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /*PURE-START*/
+  var NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+  var TUNINGS = {
+    honchoshi: { label: '本調子', offs: [0, 5, 12], gaps: ['完全4度', '完全5度'] },
+    sansage:   { label: '三下り', offs: [0, 5, 10], gaps: ['完全4度', '完全4度'] },
+    sanage:    { label: '三上り', offs: [0, 5, 14], gaps: ['完全4度', '長6度'] }
+  };
+
+  // YIN pitch detection. x: Float32Array of samples, sr: sample rate.
+  // Returns {freq, clarity} or null.
+  function yin(x, sr) {
+    var W = 2048;
+    var minTau = Math.max(2, Math.floor(sr / 1500));
+    var maxTau = Math.min(Math.floor(sr / 70), x.length - W - 1);
+    if (maxTau <= minTau + 2) return null;
+    var d = new Float32Array(maxTau + 1);
+    var tau, j, s, v;
+    for (tau = 1; tau <= maxTau; tau++) {
+      s = 0;
+      for (j = 0; j < W; j++) { v = x[j] - x[j + tau]; s += v * v; }
+      d[tau] = s;
+    }
+    var c = new Float32Array(maxTau + 1);
+    c[0] = 1;
+    var run = 0;
+    for (tau = 1; tau <= maxTau; tau++) {
+      run += d[tau];
+      c[tau] = run === 0 ? 1 : d[tau] * tau / run;
+    }
+    var found = -1, t;
+    for (t = minTau; t <= maxTau; t++) {
+      if (c[t] < 0.15) {
+        while (t + 1 <= maxTau && c[t + 1] < c[t]) t++;
+        found = t;
+        break;
+      }
+    }
+    if (found < 0) {
+      var best = minTau, m = c[minTau];
+      for (t = minTau + 1; t <= maxTau; t++) { if (c[t] < m) { m = c[t]; best = t; } }
+      if (m > 0.35) return null;
+      found = best;
+    }
+    var better = found;
+    if (found > 1 && found < maxTau) {
+      var s0 = c[found - 1], s1 = c[found], s2 = c[found + 1];
+      var den = 2 * (2 * s1 - s2 - s0);
+      if (den !== 0) better = found + (s2 - s0) / den;
+    }
+    return { freq: sr / better, clarity: 1 - c[found] };
+  }
+
+  // Signed distance in semitones from midi value m to pitch class pc, folded into (-6, 6].
+  function foldSemis(m, pc) {
+    var dd = (((m - pc) % 12) + 12) % 12;
+    return dd > 6 ? dd - 12 : dd;
+  }
+
+  // m: float midi number. pcs: pitch class of each string. lockIdx: -1 for automatic.
+  function judge(m, pcs, lockIdx) {
+    var best = -1, bestAbs = 1e9, bestD = 0;
+    for (var i = 0; i < pcs.length; i++) {
+      if (lockIdx >= 0 && i !== lockIdx) continue;
+      var dd = foldSemis(m, pcs[i]);
+      if (Math.abs(dd) < bestAbs) { bestAbs = Math.abs(dd); best = i; bestD = dd; }
+    }
+    return { idx: best, cents: bestD * 100 };
+  }
+  /*PURE-END*/
+
+  var STORE = 'shamisen-tuner-v1';
+  var S = { tuning: 'sansage', key: 0, oct: 0, a4: 440, mode: 'sustain', tab: 'mic' };
+  var lock = -1;
+
+  try {
+    var raw = localStorage.getItem(STORE);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (TUNINGS[o.tuning]) S.tuning = o.tuning;
+      if (Number.isInteger(o.key) && o.key >= 0 && o.key < 12) S.key = o.key;
+      if (o.oct === -1 || o.oct === 0 || o.oct === 1) S.oct = o.oct;
+      if (Number.isInteger(o.a4) && o.a4 >= 430 && o.a4 <= 450) S.a4 = o.a4;
+      if (o.mode === 'pluck' || o.mode === 'sustain') S.mode = o.mode;
+      if (o.tab === 'mic' || o.tab === 'ref') S.tab = o.tab;
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+
+  function offs() { return TUNINGS[S.tuning].offs; }
+  function pcOf(i) { return (S.key + offs()[i]) % 12; }
+  function pcs() { return [pcOf(0), pcOf(1), pcOf(2)]; }
+  function midi(i) { return 60 + S.key + S.oct * 12 + offs()[i]; }
+  function freq(m) { return S.a4 * Math.pow(2, (m - 69) / 12); }
+  function midiOfFreq(f) { return 69 + 12 * Math.log(f / S.a4) / Math.LN2; }
+  function noteLabel(m) { return NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+
+  function $(id) { return document.getElementById(id); }
+  var rows = [0, 1, 2].map(function (i) { return $('string-' + i); });
+  var keysEl = $('keys');
+  var keyBtns = NAMES.map(function (n, idx) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'key-' + idx;
+    b.className = 'key';
+    b.textContent = n;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { S.key = idx; lock = -1; save(); refresh(); });
+    keysEl.appendChild(b);
+    return b;
+  });
+
+  /* ---------- audio context (shared by tones and mic) ---------- */
+  var ctx = null, master = null, wave = null, noise = null;
+  function audio() {
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.9;
+      master.connect(ctx.destination);
+    }
+    if (ctx.state === 'suspended') { try { ctx.resume().catch(function () {}); } catch (e) {} }
+    return ctx;
+  }
+
+  var wl = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && !wl) {
+        navigator.wakeLock.request('screen').then(function (l) {
+          wl = l;
+          l.addEventListener('release', function () { wl = null; });
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  }
+  function releaseAwake() { try { if (wl) { wl.release(); wl = null; } } catch (e) {} }
+
+  /* ---------- reference tones ---------- */
+  var voice = null, active = -1, seqTimers = [], seqRunning = false, fadeT = null;
+
+  function getWave(c) {
+    if (!wave) {
+      var imag = new Float32Array([0, 1, 0.62, 0.45, 0.3, 0.22, 0.15, 0.1, 0.07, 0.05]);
+      wave = c.createPeriodicWave(new Float32Array(imag.length), imag);
+    }
+    return wave;
+  }
+  function getNoise(c) {
+    if (!noise) {
+      var n = Math.floor(c.sampleRate * 0.06);
+      noise = c.createBuffer(1, n, c.sampleRate);
+      var d = noise.getChannelData(0);
+      for (var k = 0; k < n; k++) d[k] = Math.random() * 2 - 1;
+    }
+    return noise;
+  }
+  function makeVoice(c, f, sustained) {
+    var t = c.currentTime;
+    var osc = c.createOscillator();
+    osc.setPeriodicWave(getWave(c));
+    osc.frequency.value = f;
+    var lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    var g = c.createGain();
+    osc.connect(lp); lp.connect(g); g.connect(master);
+    if (sustained) {
+      lp.frequency.value = 2400;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.3, t + 0.05);
+    } else {
+      lp.frequency.setValueAtTime(7000, t);
+      lp.frequency.exponentialRampToValueAtTime(900, t + 1.2);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + 2.6);
+      var ns = c.createBufferSource();
+      ns.buffer = getNoise(c);
+      var hp = c.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1800;
+      var ng = c.createGain();
+      ng.gain.setValueAtTime(0.25, t);
+      ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
+      ns.connect(hp); hp.connect(ng); ng.connect(master);
+      ns.start(t);
+    }
+    osc.start(t);
+    if (!sustained) osc.stop(t + 2.7);
+    return {
+      stop: function () {
+        var n = c.currentTime;
+        try {
+          g.gain.cancelScheduledValues(n);
+          g.gain.setValueAtTime(g.gain.value, n);
+          g.gain.setTargetAtTime(0, n, 0.03);
+          osc.stop(n + 0.2);
+        } catch (e) {}
+      }
+    };
+  }
+  function setPlaying(i) {
+    active = i;
+    rows.forEach(function (r, k) {
+      var on = k === i;
+      r.setAttribute('aria-pressed', on ? 'true' : 'false');
+      r.classList.toggle('playing', on);
+    });
+  }
+  function stopVoice() { if (voice) { voice.stop(); voice = null; } }
+  function clearSeq() { seqTimers.forEach(clearTimeout); seqTimers = []; seqRunning = false; }
+  function stopTones() { clearSeq(); clearTimeout(fadeT); stopVoice(); setPlaying(-1); }
+
+  function sound(i) {
+    var c = audio();
+    if (!c) return;
+    stopVoice();
+    clearTimeout(fadeT);
+    voice = makeVoice(c, freq(midi(i)), S.mode === 'sustain');
+    setPlaying(i);
+    keepAwake();
+    if (S.mode === 'pluck') {
+      fadeT = setTimeout(function () { if (active === i && !seqRunning) setPlaying(-1); }, 2200);
+    }
+  }
+  function onTapRef(i) {
+    clearSeq();
+    if (S.mode === 'sustain' && active === i) { stopTones(); return; }
+    sound(i);
+  }
+  function runSeq() {
+    stopTones();
+    seqRunning = true;
+    var dur = S.mode === 'sustain' ? 1700 : 1500;
+    sound(0);
+    seqTimers.push(setTimeout(function () { sound(1); }, dur));
+    seqTimers.push(setTimeout(function () { sound(2); }, dur * 2));
+    seqTimers.push(setTimeout(function () { stopTones(); }, dur * 3));
+  }
+  function retune() {
+    if (S.tab === 'ref' && S.mode === 'sustain' && active >= 0 && !seqRunning) sound(active);
+  }
+
+  /* ---------- microphone ---------- */
+  var mic = { on: false, stream: null, src: null, an: null, buf: null, raf: 0, last: 0, lastGood: 0 };
+  var hist = [];
+  var statusEl = $('mic-status'), micBtn = $('mic-btn'), meterEl = $('meter');
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('err', !!isErr);
+  }
+  function median(arr) {
+    var s = arr.slice().sort(function (a, b) { return a - b; });
+    return s[Math.floor(s.length / 2)];
+  }
+  function clearHits() {
+    rows.forEach(function (r) { r.classList.remove('hit', 'ok'); });
+    rows.forEach(function (r, k) { r.querySelector('.s-name small').textContent = rowSub(k); });
+  }
+  function rowSub(k) {
+    var base = ['いちのいと', 'にのいと', 'さんのいと'][k];
+    return (S.tab === 'mic' && lock === k) ? '狙いを固定中' : base;
+  }
+  function renderIdle(msg) {
+    meterEl.classList.remove('live', 'ok');
+    $('t-note').textContent = '–';
+    $('t-str').textContent = '狙いの糸';
+    $('c-val').textContent = '–';
+    $('c-hz').textContent = '–';
+    $('needle').style.left = '50%';
+    $('hint').textContent = msg || (mic.on ? '糸を弾いてください' : 'マイクがオフです');
+    clearHits();
+  }
+  function renderReading(m) {
+    var p = pcs();
+    var j = judge(m, p, lock);
+    if (j.idx < 0) { renderIdle(); return; }
+    var cents = j.cents;
+    var ok = Math.abs(cents) <= 5;
+    var targetPc = p[j.idx];
+    var names = [];
+    rows.forEach(function (r, k) {
+      var same = p[k] === targetPc && (lock < 0 || lock === k);
+      r.classList.toggle('hit', same);
+      r.classList.toggle('ok', same && ok);
+      r.querySelector('.s-name small').textContent = rowSub(k);
+      if (same) names.push(['一の糸', '二の糸', '三の糸'][k]);
+    });
+    meterEl.classList.add('live');
+    meterEl.classList.toggle('ok', ok);
+    $('t-note').textContent = NAMES[targetPc];
+    $('t-str').textContent = names.join('・');
+    var r = Math.round(cents);
+    $('c-val').textContent = (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r) + ' cent';
+    $('c-hz').textContent = (S.a4 * Math.pow(2, (m - 69) / 12)).toFixed(1) + ' Hz';
+    var pos = Math.max(-50, Math.min(50, cents));
+    $('needle').style.left = (50 + pos) + '%';
+    $('hint').textContent = ok ? 'ちょうど' : (cents < 0 ? '低い　少し上げて' : '高い　少し下げて');
+  }
+
+  function loop(ts) {
+    if (!mic.on) return;
+    mic.raf = requestAnimationFrame(loop);
+    if (ts - mic.last < 40) return;
+    mic.last = ts;
+    mic.an.getFloatTimeDomainData(mic.buf);
+    var x = mic.buf, s = 0, i;
+    for (i = 0; i < x.length; i++) s += x[i] * x[i];
+    var rms = Math.sqrt(s / x.length);
+    $('level').style.width = Math.min(100, Math.sqrt(rms) * 180) + '%';
+    if (rms >= 0.008) {
+      var r = yin(x, ctx.sampleRate);
+      if (r && r.clarity >= 0.8 && r.freq >= 70 && r.freq <= 1500) {
+        hist.push(midiOfFreq(r.freq));
+        if (hist.length > 5) hist.shift();
+        mic.lastGood = ts;
+        renderReading(median(hist));
+        return;
+      }
+    }
+    if (ts - mic.lastGood > 1200) { hist = []; renderIdle(); }
+  }
+
+  function startMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus(window.isSecureContext ? 'このブラウザはマイクに対応していません。' : 'マイクを使うにはHTTPSのページとして開く必要があります。', true);
+      return;
+    }
+    stopTones();
+    var c = audio();
+    if (!c) { setStatus('このブラウザは音声処理に対応していません。', true); return; }
+    setStatus('マイクの許可を待っています…');
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }).then(function (stream) {
+      mic.stream = stream;
+      mic.src = c.createMediaStreamSource(stream);
+      mic.an = c.createAnalyser();
+      mic.an.fftSize = 4096;
+      mic.buf = new Float32Array(mic.an.fftSize);
+      mic.src.connect(mic.an);
+      mic.on = true;
+      mic.last = 0;
+      mic.lastGood = performance.now();
+      hist = [];
+      micBtn.textContent = 'マイクを止める';
+      micBtn.classList.remove('primary');
+      micBtn.classList.add('ghost');
+      setStatus('聞いています。糸を1本ずつ弾いてください。');
+      renderIdle();
+      keepAwake();
+      mic.raf = requestAnimationFrame(loop);
+    }).catch(function (err) {
+      var name = err && err.name;
+      if (name === 'NotAllowedError' || name === 'SecurityError') setStatus('マイクが許可されていません。ブラウザの設定でこのページのマイクを許可してください。', true);
+      else if (name === 'NotFoundError') setStatus('マイクが見つかりません。', true);
+      else setStatus('マイクを開始できませんでした。', true);
+    });
+  }
+  function stopMic() {
+    mic.on = false;
+    cancelAnimationFrame(mic.raf);
+    if (mic.stream) { mic.stream.getTracks().forEach(function (t) { t.stop(); }); }
+    try { if (mic.src) mic.src.disconnect(); } catch (e) {}
+    mic.stream = null; mic.src = null; mic.an = null;
+    hist = [];
+    $('level').style.width = '0';
+    micBtn.textContent = 'マイクをオンにする';
+    micBtn.classList.add('primary');
+    micBtn.classList.remove('ghost');
+    setStatus('マイクをオンにして、糸を1本ずつ弾いてください。');
+    renderIdle();
+    releaseAwake();
+  }
+
+  /* ---------- view ---------- */
+  function refresh() {
+    var T = TUNINGS[S.tuning];
+    document.querySelectorAll('[data-tuning]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tuning') === S.tuning ? 'true' : 'false');
+    });
+    keyBtns.forEach(function (b, idx) { b.setAttribute('aria-pressed', idx === S.key ? 'true' : 'false'); });
+    document.querySelectorAll('[data-tab]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tab') === S.tab ? 'true' : 'false');
+    });
+    var isMic = S.tab === 'mic';
+    $('panel-mic').hidden = !isMic;
+    $('tip-mic').hidden = !isMic;
+    $('ref-actions').hidden = isMic;
+    $('row-mode').hidden = isMic;
+    $('row-oct').hidden = isMic;
+
+    rows.forEach(function (r, i) {
+      var m = midi(i);
+      if (isMic) {
+        r.querySelector('.s-note b').textContent = NAMES[pcOf(i)];
+        r.querySelector('.s-note small').textContent = '';
+        r.setAttribute('aria-pressed', lock === i ? 'true' : 'false');
+        r.classList.remove('playing');
+      } else {
+        r.querySelector('.s-note b').textContent = noteLabel(m);
+        r.querySelector('.s-note small').textContent = freq(m).toFixed(1) + ' Hz';
+        r.setAttribute('aria-pressed', active === i ? 'true' : 'false');
+        r.classList.remove('hit', 'ok');
+      }
+      r.querySelector('.s-name small').textContent = rowSub(i);
+    });
+    $('gap-0').textContent = '↑ ' + T.gaps[0];
+    $('gap-1').textContent = '↑ ' + T.gaps[1];
+
+    document.querySelectorAll('[data-mode]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-mode') === S.mode ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-oct]').forEach(function (b) {
+      b.setAttribute('aria-pressed', Number(b.getAttribute('data-oct')) === S.oct ? 'true' : 'false');
+    });
+    $('a4-val').textContent = S.a4 + ' Hz';
+    if (isMic && !mic.on) renderIdle();
+    retune();
+  }
+
+  rows.forEach(function (r, i) {
+    r.addEventListener('click', function () {
+      if (S.tab === 'ref') { onTapRef(i); return; }
+      lock = (lock === i) ? -1 : i;
+      hist = [];
+      refresh();
+      if (!mic.on) return;
+      renderIdle();
+    });
+  });
+  document.querySelectorAll('[data-tuning]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      stopTones();
+      S.tuning = b.getAttribute('data-tuning');
+      lock = -1;
+      save(); refresh();
+    });
+  });
+  document.querySelectorAll('[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-tab');
+      if (t === S.tab) return;
+      stopTones();
+      if (t === 'ref') stopMic();
+      S.tab = t;
+      save(); refresh();
+    });
+  });
+  micBtn.addEventListener('click', function () { if (mic.on) stopMic(); else startMic(); });
+  $('seq').addEventListener('click', runSeq);
+  $('stop').addEventListener('click', stopTones);
+  document.querySelectorAll('[data-mode]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      stopTones();
+      S.mode = b.getAttribute('data-mode');
+      save(); refresh();
+    });
+  });
+  document.querySelectorAll('[data-oct]').forEach(function (b) {
+    b.addEventListener('click', function () { S.oct = Number(b.getAttribute('data-oct')); save(); refresh(); });
+  });
+  $('a4-down').addEventListener('click', function () { if (S.a4 > 430) { S.a4 -= 1; save(); refresh(); } });
+  $('a4-up').addEventListener('click', function () { if (S.a4 < 450) { S.a4 += 1; save(); refresh(); } });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopTones(); if (mic.on) stopMic(); }
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
